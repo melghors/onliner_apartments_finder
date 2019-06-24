@@ -38,8 +38,14 @@ func DeleteChannel(c *channels, channelId int64) {
 }
 
 func generateApiRequest (min *string, max *string, rooms *string) string {
-	url := "https://ak.api.onliner.by/search/apartments?rent_type%5B%5D=" + *rooms + "_rooms&price%5Bmin%5D=" + *min + "&price%5Bmax%5D=" + *max +" &currency=usd&only_owner=true&bounds%5Blb%5D%5Blat%5D=53.709307173772835&bounds%5Blb%5D%5Blong%5D=27.36625671386719&bounds%5Brt%5D%5Blat%5D=54.08638172488552&bounds%5Brt%5D%5Blong%5D=27.75833129882813&v=0.1609207785679565"
-	return url
+	if *rooms == "1" {
+		url := "https://ak.api.onliner.by/search/apartments?rent_type%5B%5D=1_room&price%5Bmin%5D=" + *min + "&price%5Bmax%5D=" + *max + "&currency=usd&only_owner=true&bounds%5Blb%5D%5Blat%5D=53.709307173772835&bounds%5Blb%5D%5Blong%5D=27.36625671386719&bounds%5Brt%5D%5Blat%5D=54.08638172488552&bounds%5Brt%5D%5Blong%5D=27.75833129882813&v=0.1609207785679565"
+		return url
+	} else {
+		url := "https://ak.api.onliner.by/search/apartments?rent_type%5B%5D=" + *rooms + "_rooms&price%5Bmin%5D=" + *min + "&price%5Bmax%5D=" + *max + "&currency=usd&only_owner=true&bounds%5Blb%5D%5Blat%5D=53.709307173772835&bounds%5Blb%5D%5Blong%5D=27.36625671386719&bounds%5Brt%5D%5Blat%5D=54.08638172488552&bounds%5Brt%5D%5Blong%5D=27.75833129882813&v=0.1609207785679565"
+		return url
+	}
+
 }
 
 func initBot () {
@@ -55,12 +61,12 @@ func initBot () {
 	var minPrice = ""
 	var maxPrice = ""
 	var roomsCount = ""
-	var url = "https://ak.api.onliner.by/search/apartments?rent_type%5B%5D=1_room&rent_type%5B%5D=2_rooms&price%5Bmin%5D=400&price%5Bmax%5D=600&currency=usd&only_owner=true&bounds%5Blb%5D%5Blat%5D=53.69914561462634&bounds%5Blb%5D%5Blong%5D=27.36625671386719&bounds%5Brt%5D%5Blat%5D=54.09604689032579&bounds%5Brt%5D%5Blong%5D=27.75833129882813&v=0.18898162215768832"
 	c := Apartment{}
 	oldMap := make(apartmentsIds)
 
 	cr := cron.New()
-	_ = cr.AddFunc("*/1 * * * * *", func() {
+	_ = cr.AddFunc("*/30 * * * * *", func() {
+		fmt.Println(generateApiRequest(&minPrice, &maxPrice, &roomsCount))
 		message, diff := getNewApartments(generateApiRequest(&minPrice, &maxPrice, &roomsCount), &c, &oldMap)
 		if len(diff) != 0 {
 			for channel := range channels {
@@ -76,42 +82,31 @@ func initBot () {
 
 	for update := range updates {
 		switch update.Message.Command(){
-			case "get":
-				message, diff := getNewApartments(generateApiRequest(&minPrice, &maxPrice, &roomsCount), &c, &oldMap)
-				if len(diff) != 0 {
-					for channel := range channels {
-						test := tgbotapi.NewMessage(channel, message)
-						_, err := bot.Send(test)
-						if err != nil {
-							panic(err)
-						}
+		    case "help":
+		    	s := "Your current price range: " + minPrice + "$-" + maxPrice + "$, rooms count: " + roomsCount + "\n" + "/start - register \n/exit - unregister \n/set_price_range - example: /set_price_range 200 600 \n/set_rooms_count - example: /set_rooms_count 1"
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, s)
+				_, err := bot.Send(msg)
+				if err != nil {
+					panic(err)
+				}
+			case  "start":
+				if minPrice == "" || maxPrice == "" || roomsCount == "" {
+					s := "First of all define /set_rooms_count and /set_price_range!"
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, s)
+					_, err := bot.Send(msg)
+					if err != nil {
+						panic(err)
 					}
 				} else {
-						msg := "There is no new apartments!"
-						test := tgbotapi.NewMessage(update.Message.Chat.ID, msg)
-						_, err := bot.Send(test)
-						if err != nil {
-							panic(err)
-						}
+					addChannel(&channels, update.Message.Chat.ID)
+					s := "You are registered for updates!"
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, s)
+					_, err := bot.Send(msg)
+					if err != nil {
+						panic(err)
 					}
-		    case "help":
-		    	s := "/start - register \n/exit - unregister \n/set_price_range - example: /set_price_range 200 600 \nset_rooms_count - example: /set_rooms_count 1"
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, s)
-				_, err := bot.Send(msg)
-				if err != nil {
-					panic(err)
-				}
-				fmt.Println(minPrice)
-				fmt.Println(maxPrice)
-				fmt.Println(roomsCount)
-			case  "start":
-				addChannel(&channels, update.Message.Chat.ID)
-				s := "You are registered for updates!"
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, s)
-				_, err := bot.Send(msg)
-				if err != nil {
-					panic(err)
-				}
+			}
+
 			case "exit":
 				DeleteChannel(&channels, update.Message.Chat.ID)
 				s := "You are unregistered from updates!"
@@ -123,7 +118,7 @@ func initBot () {
 			case "set_price_range":
 				priceRange := update.Message.CommandArguments()
 				s := strings.Split(priceRange, " ")
-				if len(priceRange) == 2 {
+				if len(s) == 2 {
 					minPrice, maxPrice = s[0], s[1]
 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Price range successfully configured!")
 					_, err = bot.Send(msg)
@@ -139,7 +134,6 @@ func initBot () {
 						panic(err)
 					}
 				}
-
 			case "set_rooms_count":
 				rooms := update.Message.CommandArguments()
 				if len(rooms) == 1 {
@@ -154,7 +148,6 @@ func initBot () {
 		}
 	}
 }
-
 
 type apartmentsIds map[int]struct{}
 
