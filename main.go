@@ -181,7 +181,7 @@ type Apartment struct {
 func getApartments(c *Apartment, url string) apartmentsIds {
 	m := make(apartmentsIds)
 	spaceClient := http.Client{
-		Timeout: time.Second * 2, // Maximum of 2 secs
+		Timeout: time.Second * 5, // Maximum of 2 secs
 	}
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -190,7 +190,7 @@ func getApartments(c *Apartment, url string) apartmentsIds {
 	req.Header.Set("Accept", "application/json")
 	resp, getErr := spaceClient.Do(req)
 	if getErr != nil {
-		log.Fatal(getErr)
+		fmt.Println("error")
 	}
 	bodyBytes, readErr := ioutil.ReadAll(resp.Body)
 	if readErr != nil {
