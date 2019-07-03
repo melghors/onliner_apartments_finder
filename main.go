@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	_ "net/url"
 	"os"
 	"strings"
 	"time"
@@ -37,15 +38,22 @@ func DeleteChannel(c *channels, channelId int64) {
 	delete(*c, channelId)
 }
 
-func generateApiRequest (min *string, max *string, rooms *string) string {
-	if *rooms == "1" {
+func generateApiRequest (min *string, max *string, rooms string) string {
+	if rooms == "1" {
 		url := "https://ak.api.onliner.by/search/apartments?rent_type%5B%5D=1_room&price%5Bmin%5D=" + *min + "&price%5Bmax%5D=" + *max + "&currency=usd&only_owner=true&bounds%5Blb%5D%5Blat%5D=53.709307173772835&bounds%5Blb%5D%5Blong%5D=27.36625671386719&bounds%5Brt%5D%5Blat%5D=54.08638172488552&bounds%5Brt%5D%5Blong%5D=27.75833129882813&v=0.1609207785679565"
 		return url
-	} else {
-		url := "https://ak.api.onliner.by/search/apartments?rent_type%5B%5D=" + *rooms + "_rooms&price%5Bmin%5D=" + *min + "&price%5Bmax%5D=" + *max + "&currency=usd&only_owner=true&bounds%5Blb%5D%5Blat%5D=53.709307173772835&bounds%5Blb%5D%5Blong%5D=27.36625671386719&bounds%5Brt%5D%5Blat%5D=54.08638172488552&bounds%5Brt%5D%5Blong%5D=27.75833129882813&v=0.1609207785679565"
+	} else if rooms == "2" {
+		url := "https://ak.api.onliner.by/search/apartments?rent_type%5B%5D=" + rooms + "_rooms&price%5Bmin%5D=" + *min + "&price%5Bmax%5D=" + *max + "&currency=usd&only_owner=true&bounds%5Blb%5D%5Blat%5D=53.709307173772835&bounds%5Blb%5D%5Blong%5D=27.36625671386719&bounds%5Brt%5D%5Blat%5D=54.08638172488552&bounds%5Brt%5D%5Blong%5D=27.75833129882813&v=0.1609207785679565"
 		return url
+	} else if len(rooms) == 2 {
+		url := "https://ak.api.onliner.by/search/apartments?rent_type%5B%5D=" + string(rooms[0]) + "_room&rent_type%5B%5D=" + string(rooms[1]) + "_rooms&price%5Bmin%5D=" + *min + "&price%5Bmax%5D=" + *max + "&currency=usd&only_owner=true&bounds%5Blb%5D%5Blat%5D=53.69914561462634&bounds%5Blb%5D%5Blong%5D=27.36625671386719&bounds%5Brt%5D%5Blat%5D=54.09604689032579&bounds%5Brt%5D%5Blong%5D=27.75833129882813&page=1&v=0.8608993836091408"
+		return  url
+	} else if len(rooms) == 3 {
+	    url := "https://ak.api.onliner.by/search/apartments?rent_type%5B%5D=" + string(rooms[0]) + "_room&rent_type%5B%5D=" + string(rooms[1]) + "_room&rent_type%5B%5D=" + string(rooms[2]) + "_rooms&price%5Bmin%5D=" + *min + "&price%5Bmax%5D=" + *max + "&currency=usd&only_owner=true&bounds%5Blb%5D%5Blat%5D=53.69914561462634&bounds%5Blb%5D%5Blong%5D=27.36625671386719&bounds%5Brt%5D%5Blat%5D=54.09604689032579&bounds%5Brt%5D%5Blong%5D=27.75833129882813&page=1&v=0.8608993836091408"
+		return  url
+	} else {
+		return "https://ak.api.onliner.by/search/apartments?rent_type%5B%5D=" + string(rooms[0]) + "_room&rent_type%5B%5D=" + string(rooms[1]) + "_room&rent_type%5B%5D=" + string(rooms[2]) + "_room&rent_type%5B%5D=" + string(rooms[3]) + "_rooms&price%5Bmin%5D=" + *min + "&price%5Bmax%5D=" + *max + "&currency=usd&only_owner=true&bounds%5Blb%5D%5Blat%5D=53.69914561462634&bounds%5Blb%5D%5Blong%5D=27.36625671386719&bounds%5Brt%5D%5Blat%5D=54.09604689032579&bounds%5Brt%5D%5Blong%5D=27.75833129882813&page=1&v=0.8608993836091408"
 	}
-
 }
 
 func initBot () {
@@ -66,8 +74,8 @@ func initBot () {
 
 	cr := cron.New()
 	_ = cr.AddFunc("*/30 * * * * *", func() {
-		fmt.Println(generateApiRequest(&minPrice, &maxPrice, &roomsCount))
-		message, diff := getNewApartments(generateApiRequest(&minPrice, &maxPrice, &roomsCount), &c, &oldMap)
+		fmt.Println(generateApiRequest(&minPrice, &maxPrice, roomsCount))
+		message, diff := getNewApartments(generateApiRequest(&minPrice, &maxPrice, roomsCount), &c, &oldMap)
 		if len(diff) != 0 {
 			for channel := range channels {
 				test := tgbotapi.NewMessage(channel, message)
@@ -144,6 +152,42 @@ func initBot () {
 					if err != nil {
 						panic(err)
 					}
+				}
+				if len(rooms) == 2 {
+					roomsCount = rooms
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Rooms count successfully configured!")
+					_, err = bot.Send(msg)
+					_, err := bot.Send(msg)
+					if err != nil {
+						panic(err)
+					}
+					println(rooms)
+					println(rooms[0])
+					fmt.Println(string(rooms[0]))
+				}
+				if len(rooms) == 3 {
+					roomsCount = rooms
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Rooms count successfully configured!")
+					_, err = bot.Send(msg)
+					_, err := bot.Send(msg)
+					if err != nil {
+						panic(err)
+					}
+					println(rooms)
+					println(rooms[0])
+					fmt.Println(string(rooms[0]))
+				}
+				if len(rooms) == 4 {
+					roomsCount = rooms
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Rooms count successfully configured!")
+					_, err = bot.Send(msg)
+					_, err := bot.Send(msg)
+					if err != nil {
+						panic(err)
+					}
+					println(rooms)
+					println(rooms[0])
+					fmt.Println(string(rooms[0]))
 				}
 		}
 	}
