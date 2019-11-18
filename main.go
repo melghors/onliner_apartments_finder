@@ -73,7 +73,7 @@ func initBot () {
 	oldMap := make(apartmentsIds)
 
 	cr := cron.New()
-	_ = cr.AddFunc("*/30 * * * * *", func() {
+	_, err = cr.AddFunc("*/30 * * * * *", func() {
 		fmt.Println(generateApiRequest(&minPrice, &maxPrice, roomsCount))
 		message, diff := getNewApartments(generateApiRequest(&minPrice, &maxPrice, roomsCount), &c, &oldMap)
 		if len(diff) != 0 {
